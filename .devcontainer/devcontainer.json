@@ -1,0 +1,48 @@
+{
+    "name": "Python 3.9.5",
+    "remoteUser": "vscode",
+    "build": {
+        "dockerfile": "Dockerfile",
+        "context": "..",
+        "args": {
+            "PYTHON_VERSION": "3.9",
+            "POETRY_VERSION": "1.4.0"
+        }
+    },
+    "customizations": {
+        "vscode": {
+            "extensions": [
+                "ms-python.python",
+                "ms-python.vscode-pylance",
+                "ms-python.black-formatter",
+                "bungcip.better-toml"
+            ]
+        },
+        "settings": {
+            "files.trimTrailingWhitespace": true,
+            "files.insertFinalNewline": true,
+            "files.trimFinalNewlines": true,
+            "python.testing.autoTestDiscoverOnSaveEnabled": true,
+            "python.testing.unittestEnabled": false,
+            "python.testing.nosetestsEnabled": false,
+            "python.testing.pytestEnabled": false,
+            "pythonTestExplorer.testFramework": "pytest",
+            "python.languageServer": "Pylance",
+            "python.linting.enabled": true,
+            "python.linting.mypyEnabled": true,
+            "python.linting.flake8Enabled": false,
+            "python.linting.pylintEnabled": false,
+            "python.formatting.blackPath": "/usr/local/py-utils/bin/black",
+            "python.formatting.blackArgs": [
+                "--line-length=119"
+            ],
+            "python.formatting.provider": "black",
+            "python.linting.flake8Path": "/usr/local/py-utils/bin/flake8",
+            "python.linting.flake8Args": [
+                "--config",
+                "/home/vscode/.config/flake8"
+            ],
+            "python.venvPath": "/home/vscode/.cache/pypoetry/virtualenvs"
+        }
+    }
+}
