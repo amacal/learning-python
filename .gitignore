@@ -1,4 +1,4 @@
-profile
-current-*
+data
+profile*
 .mypy_cache
 __pycache__

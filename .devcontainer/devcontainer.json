@@ -1,14 +1,17 @@
 {
-    "name": "Python 3.9.5",
+    "name": "Python 3.11",
     "remoteUser": "vscode",
     "build": {
         "dockerfile": "Dockerfile",
         "context": "..",
         "args": {
-            "PYTHON_VERSION": "3.9",
-            "POETRY_VERSION": "1.4.0"
+            "PYTHON_VERSION": "3.11",
+            "POETRY_VERSION": "1.4.2"
         }
     },
+    "mounts": [
+        "source=C:\\Users\\Adrian Macal\\Unsplash,target=/unsplash,type=bind,consistency=cached"
+    ],
     "customizations": {
         "vscode": {
             "extensions": [
@@ -22,12 +25,13 @@
             "files.trimTrailingWhitespace": true,
             "files.insertFinalNewline": true,
             "files.trimFinalNewlines": true,
+            "pythonTestExplorer.testFramework": "pytest",
+            "python.languageServer": "Pylance",
+            "python.analysis.typeCheckingMode": "basic",
             "python.testing.autoTestDiscoverOnSaveEnabled": true,
             "python.testing.unittestEnabled": false,
             "python.testing.nosetestsEnabled": false,
             "python.testing.pytestEnabled": false,
-            "pythonTestExplorer.testFramework": "pytest",
-            "python.languageServer": "Pylance",
             "python.linting.enabled": true,
             "python.linting.mypyEnabled": true,
             "python.linting.flake8Enabled": false,
