@@ -18,11 +18,13 @@ from selenium.webdriver.support.wait import WebDriverWait
 class DownloadRequest:
     id: str
     url: str
+    width: int
 
 
 @dataclass(kw_only=True)
 class DownloadResponse:
     id: str
+    width: int
     data: Optional[bytes]
 
 
@@ -34,10 +36,11 @@ def downloading(incoming: queue.Queue, outgoing: queue.Queue):
         try:
             logger.debug(f"Downloading {value.id} ...")
             response = requests.get(value.url)
+            
             response.raise_for_status()
-            outgoing.put(DownloadResponse(id=value.id, data=response.content))
+            outgoing.put(DownloadResponse(id=value.id, width=value.width, data=response.content))
         except Exception as ex:
-            outgoing.put(DownloadResponse(id=value.id, data=None))
+            outgoing.put(DownloadResponse(id=value.id, width=value.width, data=None))
             logger.error(str(ex))
 
 
