@@ -102,7 +102,6 @@ def coordinate(
                     crawl_requests.put(CrawlRequest(id=id, follow=follow))
 
                 logger.info(f"Looking for items to follow: {followable}")
-                continuable = handle_responses(storage, logger, incoming, queued, download_widths)
 
-                if not continuable:
-                    return
+        if not handle_responses(storage, logger, incoming, queued, download_widths):
+            return
