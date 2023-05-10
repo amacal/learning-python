@@ -46,7 +46,7 @@ def downloading(incoming: queue.Queue, outgoing: queue.Queue):
 
 @dataclass(kw_only=True)
 class CrawlRequest:
-    id: str
+    id: Optional[str]
     follow: str
 
 

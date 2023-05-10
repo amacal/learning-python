@@ -19,9 +19,9 @@ def _extract_id(element: WebElement) -> Tuple[Optional[str], Optional[str]]:
     return (None, None)
 
 
-def _extract_600w(element: WebElement) -> Tuple[Optional[str], Optional[str], Optional[str], Optional[str]]:
+def _extract_first_width(element: WebElement) -> Tuple[Optional[str], Optional[str], Optional[str], Optional[str]]:
     srcset = element.get_attribute("srcset")
-    pattern = r"(?P<url>https://images.unsplash.com/photo-(?P<id>[0-9]{13}-[0-9a-f]{12})\\?[^\s]+)\s+600w"
+    pattern = r"^(?P<url>https://images.unsplash.com/photo-(?P<id>[0-9]{13}-[0-9a-f]{12})\\?[^\s]+)\s+[0-9]{3,4}w"
 
     links = element.find_elements(By.XPATH, ".//ancestor::a[1]")
     link: Tuple[Optional[str], Optional[str]] = _extract_id(links[0]) if links else (None, None) 
@@ -34,6 +34,6 @@ def _extract_600w(element: WebElement) -> Tuple[Optional[str], Optional[str], Op
             
 def extract_visible_images(driver: webdriver.Chrome) -> Iterator[Tuple[str, str, Optional[str], Optional[str]]]:
     for item in driver.find_elements(By.XPATH, "//img[@srcset]"):
-        if extracted := _extract_600w(item):
+        if extracted := _extract_first_width(item):
             if len(extracted) == 4 and extracted[0] and extracted[1]:
                 yield (extracted[0], extracted[1], extracted[2], extracted[3])
