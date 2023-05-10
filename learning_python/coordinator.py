@@ -63,6 +63,7 @@ def handle_responses(
 def coordinate(
     incoming: queue.Queue,
     crawl_requests: queue.Queue,
+    crawl_limit: int,
     download_requests: queue.Queue,
     download_widths: Tuple[int],
     download_batch_size: int,
@@ -78,7 +79,7 @@ def coordinate(
     if not continuable:
         return
 
-    while batch := storage.pop_batch():
+    while True:
         for width in download_widths:
             downloadable = 0
             logger.info(f"Looking for items to download {width} ...")
@@ -91,15 +92,17 @@ def coordinate(
 
             logger.info(f"Looking for items to download {width}: {downloadable}")
 
-        followable = 0
-        logger.info(f"Looking for items to follow ...")
+        if crawl_limit > storage.visited_count():
+            if batch := storage.pop_batch():
+                followable = 0
+                logger.info(f"Looking for items to follow ...")
 
-        for id, follow in batch.items():
-            followable = followable + 1
-            crawl_requests.put(CrawlRequest(id=id, follow=follow))
+                for id, follow in batch.items():
+                    followable = followable + 1
+                    crawl_requests.put(CrawlRequest(id=id, follow=follow))
 
-        logger.info(f"Looking for items to follow: {followable}")
-        continuable = handle_responses(storage, logger, incoming, queued, download_widths)
+                logger.info(f"Looking for items to follow: {followable}")
+                continuable = handle_responses(storage, logger, incoming, queued, download_widths)
 
-        if not continuable:
-            return
+                if not continuable:
+                    return

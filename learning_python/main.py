@@ -37,7 +37,14 @@ def get_signal_handler(logger: logging.Logger, queues: List[queue.Queue]) -> Cal
 @click.option("--downloaders", default=6, type=int)
 @click.option("--download-batch-size", default=50, type=int)
 @click.option("--width", default=[600], type=int, multiple=True)
-def unsplash(crawlers: int, downloaders: int, download_batch_size: int, width: Tuple[int]) -> None:
+@click.option("--crawl-limit", default=(1000000), type=int)
+def unsplash(
+    crawlers: int,
+    downloaders: int,
+    download_batch_size: int,
+    width: Tuple[int],
+    crawl_limit: int,
+) -> None:
     incoming: queue.Queue = queue.Queue()
     crawl_requests: queue.Queue = queue.Queue(maxsize=30)
     download_requests: queue.Queue = queue.Queue()
@@ -57,10 +64,11 @@ def unsplash(crawlers: int, downloaders: int, download_batch_size: int, width: T
                 outgoing=incoming,
                 profile=f"/tmp/profile-{index}",
             )
-        
+
         class CoordinateArgs(NamedTuple):
             incoming: queue.Queue
             crawl_requests: queue.Queue
+            crawl_limit: int
             download_requests: queue.Queue
             download_widths: Tuple[int]
             download_batch_size: int
@@ -69,6 +77,7 @@ def unsplash(crawlers: int, downloaders: int, download_batch_size: int, width: T
             return CoordinateArgs(
                 incoming=incoming,
                 crawl_requests=crawl_requests,
+                crawl_limit=crawl_limit,
                 download_requests=download_requests,
                 download_widths=width,
                 download_batch_size=download_batch_size,
