@@ -19,11 +19,15 @@ def handle_responses(
     widths: Tuple[int],
     timeout: float = 1,
 ) -> bool:
-    considered, taken, downloaded, bytes = 0, 0, 0, 0
+    terminated = False
+    considered, taken, downloaded, size = 0, 0, 0, 0
     logger.info(f"Looking for responses ...")
 
     try:
-        while value := incoming.get(block=True, timeout=timeout):
+        while True:
+            value = incoming.get(block=True, timeout=timeout)
+            terminated = terminated or value is None
+
             if isinstance(value, CrawlResponse):
                 next = {id: follow for id, _, _, follow in value.data if follow and not storage.is_visited(id)}
 
@@ -40,24 +44,29 @@ def handle_responses(
             if isinstance(value, DownloadResponse):
                 queued.remove(value.id)
                 data = value.data
-                if data:
+
+                if isinstance(data, bytes):
                     logger.debug(f"Downloaded {value.id} / {len(data)}")
                     storage.set_downloaded(value.width, value.id, data)
                     downloaded = downloaded + 1
-                    bytes = bytes + len(data)
+                    size = size + len(data)
 
-        return False
+                    if not data:
+                        logger.warn(f"Downloaded {value.id} has zero length!")
+
+                else:
+                    logger.warn(f"Downloading {value.id} returned no content!")
 
     except queue.Empty:
         logger.info(f"No more responses, continuing ...")
-        logger.info(f"Processed: {taken} / {considered} + {downloaded} / {bytes}")
+        logger.info(f"Processed: {taken} / {considered} + {downloaded} / {size}")
         logger.info(f"Visited: {storage.visited_count()}")
 
         for width in widths:
             left = storage.visited_count() - storage.downloaded_count(width)
             logger.info(f"Downloaded: {storage.downloaded_count(width)} + {left} / {width}")
 
-        return True
+    return terminated is False
 
 
 def coordinate(
@@ -69,8 +78,10 @@ def coordinate(
     download_batch_size: int,
 ) -> None:
     logger = logging.getLogger("coordinator")
-    storage = Storage.open("/unsplash", widths=download_widths)
     queued: Set[str] = set()
+
+    logger.info(f"Initializing storage ...")
+    storage = Storage.open("/unsplash", widths=download_widths)
 
     logger.info(f"Bootstrapping queue ...")
     crawl_requests.put(CrawlRequest(id=None, follow="https://unsplash.com/"))

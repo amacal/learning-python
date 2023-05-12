@@ -34,7 +34,7 @@ def downloading(incoming: queue.Queue, outgoing: queue.Queue):
     value: Optional[DownloadRequest]
     while value := incoming.get():
         try:
-            logger.debug(f"Downloading {value.id} ...")
+            logger.debug(f"Downloading {value.id} / {value.width}: {value.url} ...")
             response = requests.get(value.url)
             
             response.raise_for_status()

@@ -83,7 +83,7 @@ def unsplash(
                 download_batch_size=download_batch_size,
             )
 
-        with ThreadPoolExecutor(max_workers=20) as executor:
+        with ThreadPoolExecutor(max_workers=1 + downloaders + crawlers) as executor:
             crawl_args = [create_crawl_args(i) for i in range(crawlers)]
             crawl_tasks = [loop.run_in_executor(executor, crawling, *args) for args in crawl_args]
 
