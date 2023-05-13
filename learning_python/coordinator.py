@@ -86,7 +86,7 @@ def coordinate(
     logger.info(f"Bootstrapping queue ...")
     crawl_requests.put(CrawlRequest(id=None, follow="https://unsplash.com/"))
     continuable = handle_responses(storage, logger, incoming, queued, download_widths, timeout=20)
-    
+
     if not continuable:
         return
 
@@ -103,7 +103,7 @@ def coordinate(
 
             logger.info(f"Looking for items to download {width}: {downloadable}")
 
-        if crawl_limit > storage.visited_count():
+        while crawl_limit > storage.visited_count() and crawl_requests.qsize() <= crawl_requests.maxsize * 0.5:
             if batch := storage.pop_batch():
                 followable = 0
                 logger.info(f"Looking for items to follow ...")
@@ -113,6 +113,8 @@ def coordinate(
                     crawl_requests.put(CrawlRequest(id=id, follow=follow))
 
                 logger.info(f"Looking for items to follow: {followable}")
+            else:
+                break
 
         if not handle_responses(storage, logger, incoming, queued, download_widths):
             return
