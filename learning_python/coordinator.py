@@ -29,14 +29,19 @@ def handle_responses(
             terminated = terminated or value is None
 
             if isinstance(value, CrawlResponse):
-                next = {id: follow for id, _, _, follow in value.data if follow and not storage.is_visited(id)}
+                next = {id: follow for id, _, _, _, follow in value.data if follow and not storage.is_visited(id)}
 
-                for id, url, _, _ in value.data:
+                for id, url, description, _, follow in value.data:
                     considered = considered + 1
-                    if not storage.is_visited(id):
-                        logger.debug(f"Visiting {id} ...")
-                        storage.set_visited(id, url)
-                        taken = taken + 1
+                    logger.debug(f"Visiting {id} ...")
+
+                    kwargs = {
+                        "follow": follow,
+                        "description": description,
+                    }
+
+                    visited = storage.set_visited(id, url, kwargs)
+                    taken = taken + (1 if visited else 0)
 
                 if next:
                     storage.push_batch(next)
@@ -62,6 +67,9 @@ def handle_responses(
         logger.info(f"Processed: {taken} / {considered} + {downloaded} / {size}")
         logger.info(f"Visited: {storage.visited_count()}")
 
+        for version in storage.get_versions():
+            logger.info(f"Visited: {storage.visited_count(version)} / {version}")
+
         for width in widths:
             left = storage.visited_count() - storage.downloaded_count(width)
             logger.info(f"Downloaded: {storage.downloaded_count(width)} + {left} / {width}")
@@ -73,6 +81,7 @@ def coordinate(
     incoming: queue.Queue,
     crawl_requests: queue.Queue,
     crawl_limit: int,
+    download_workers: int,
     download_requests: queue.Queue,
     download_widths: Tuple[int],
     download_batch_size: int,
@@ -91,17 +100,21 @@ def coordinate(
         return
 
     while True:
-        for width in download_widths:
-            downloadable = 0
-            logger.info(f"Looking for items to download {width} ...")
+        total = 0
 
-            for id, url in storage.get_downloadable(download_batch_size, width, queued):
-                if id not in queued:
-                    queued.add(id)
-                    downloadable = downloadable + 1
-                    download_requests.put(DownloadRequest(id=id, url=url, width=width))
+        if download_workers:
+            for width in download_widths:
+                downloadable = 0
+                logger.info(f"Looking for items to download {width} ...")
 
-            logger.info(f"Looking for items to download {width}: {downloadable}")
+                for id, url in storage.get_downloadable(download_batch_size, width, queued):
+                    if id not in queued:
+                        queued.add(id)
+                        downloadable = downloadable + 1
+                        download_requests.put(DownloadRequest(id=id, url=url, width=width))
+
+                total = total + downloadable
+                logger.info(f"Looking for items to download {width}: {downloadable}")
 
         while crawl_limit > storage.visited_count() and crawl_requests.qsize() <= crawl_requests.maxsize * 0.5:
             if batch := storage.pop_batch():
@@ -118,3 +131,17 @@ def coordinate(
 
         if not handle_responses(storage, logger, incoming, queued, download_widths):
             return
+
+        total = total + max(0, crawl_limit - storage.visited_count())
+        total = total + crawl_requests.qsize() + download_requests.qsize()
+
+        if total == 0:
+            for item in [crawl_requests, download_requests]:
+                try:
+                    for _ in range(max(40, item.maxsize)):
+                        item.put_nowait(None)
+                except queue.Full:
+                    pass
+
+            logger.info("Coordination completed")
+            break

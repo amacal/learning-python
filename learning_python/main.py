@@ -1,3 +1,4 @@
+import os
 import queue
 import click
 import signal
@@ -19,10 +20,10 @@ from concurrent.futures import ThreadPoolExecutor
 
 def get_signal_handler(logger: logging.Logger, queues: List[queue.Queue]) -> Callable[[int, Any], None]:
     def terminate_ignore(signum: int, frame: Any) -> None:
-        logger.warn("Handling CTRL+C, waiting for workers...")
+        logger.warn(f"Handling CTRL+C, waiting for workers ({os.getpid()}) ...")
 
     def terminate_everything(signum: int, frame: Any) -> None:
-        logger.warn("Handling CTRL+C, waiting for workers...")
+        logger.warn(f"Handling CTRL+C, waiting for workers ({os.getpid()}) ...")
 
         for queue in queues:
             queue.put(None)
@@ -69,6 +70,7 @@ def unsplash(
             incoming: queue.Queue
             crawl_requests: queue.Queue
             crawl_limit: int
+            download_workers: int
             download_requests: queue.Queue
             download_widths: Tuple[int]
             download_batch_size: int
@@ -78,6 +80,7 @@ def unsplash(
                 incoming=incoming,
                 crawl_requests=crawl_requests,
                 crawl_limit=crawl_limit,
+                download_workers=downloaders,
                 download_requests=download_requests,
                 download_widths=width,
                 download_batch_size=download_batch_size,
