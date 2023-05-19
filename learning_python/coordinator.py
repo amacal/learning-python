@@ -1,7 +1,9 @@
 import queue
 import logging
 
+from typing import Any
 from typing import Set
+from typing import Dict
 from typing import Tuple
 
 from learning_python.storage import Storage
@@ -20,7 +22,7 @@ def handle_responses(
     timeout: float = 1,
 ) -> bool:
     terminated = False
-    considered, taken, downloaded, size = 0, 0, 0, 0
+    considered, taken, downloaded, size, orphaned = 0, 0, 0, 0, 0
     logger.info(f"Looking for responses ...")
 
     try:
@@ -29,19 +31,43 @@ def handle_responses(
             terminated = terminated or value is None
 
             if isinstance(value, CrawlResponse):
-                next = {id: follow for id, _, _, _, follow in value.data if follow and not storage.is_visited(id)}
+                next = {
+                    attribution.id: attribution.follow
+                    for attribution in value.data
+                    if attribution.id and attribution.follow and not storage.is_visited(attribution.id)
+                }
 
-                for id, url, description, _, follow in value.data:
-                    considered = considered + 1
-                    logger.debug(f"Visiting {id} ...")
+                for attribution in value.data:
+                    if attribution.id and attribution.url and attribution.follow:
+                        considered = considered + 1
+                        logger.debug(f"Visiting {attribution.id} ...")
 
-                    kwargs = {
-                        "follow": follow,
-                        "description": description,
-                    }
+                        kwargs = {
+                            "follow": attribution.follow,
+                            "description": attribution.description,
+                            "tags": attribution.tags,
+                        }
 
-                    visited = storage.set_visited(id, url, kwargs)
-                    taken = taken + (1 if visited else 0)
+                        def get_flags(payload: Dict[str, Any]) -> str:
+                            flags = ""
+
+                            if payload.get("tags"):
+                                flags += "t"
+
+                            return flags
+
+                        def merge(previous: Dict[str, Any], next: Dict[str, Any]) -> Tuple[Dict[str, Any], str]:
+                            payload = {**previous, **next, "tags": next.get("tags", previous.get("tags"))}
+                            return (payload, get_flags(payload))
+
+                        visited = storage.set_visited(
+                            attribution.id, attribution.url, get_flags(kwargs), kwargs, merge
+                        )
+
+                        taken = taken + (1 if visited else 0)
+
+                    else:
+                        orphaned += 1
 
                 if next:
                     storage.push_batch(next)
@@ -64,7 +90,7 @@ def handle_responses(
 
     except queue.Empty:
         logger.info(f"No more responses, continuing ...")
-        logger.info(f"Processed: {taken} / {considered} + {downloaded} / {size}")
+        logger.info(f"Processed: {taken} / {considered} / {orphaned} + {downloaded} / {size}")
         logger.info(f"Visited: {storage.visited_count()}")
 
         for version in storage.get_versions():

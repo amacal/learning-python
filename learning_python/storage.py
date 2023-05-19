@@ -6,23 +6,55 @@ import urllib.parse
 import json
 import time
 
+from typing import Any
 from typing import Set
 from typing import Dict
+from typing import List
 from typing import Tuple
+from typing import Callable
 from typing import Optional
 from typing import Iterator
+
+
+class FileVersion:
+    def __init__(self, version: str, flags: List[str]):
+        self._version = version
+        self._flags = flags
+
+    def __str__(self) -> str:
+        return f"{self._version}+{''.join(sorted(self._flags))}" if self._flags else self._version
+
+    def get_version(self) -> str:
+        return self._version
+
+    def get_flags(self) -> str:
+        return self._flags
+
+    def is_newer(self, challenger: "FileVersion") -> bool:
+        if self._version > challenger._version:
+            return True
+
+        if self._version < challenger._version:
+            return False
+
+        for flag in challenger._flags:
+            if flag not in self._flags:
+                return False
+
+        return True
 
 
 def create_if_absent(path: str) -> None:
     os.makedirs(path, exist_ok=True)
 
 
-def list_directory(path: str) -> Iterator[Tuple[str, str]]:
+def list_directory(path: str) -> Iterator[Tuple[str, FileVersion]]:
     with os.scandir(path) as entries:
         for entry in entries:
             if entry.is_file():
                 filename, extension = os.path.splitext(entry.name)
-                yield (filename, extension) if extension else (filename, "")
+                version, flags = (extension.split("+") + [""])[0:2]
+                yield (filename, FileVersion(version, flags))
             elif entry.is_dir():
                 yield from list_directory(entry.path)
 
@@ -40,7 +72,9 @@ def rewrite_url(url: str, width: int) -> str:
 
 
 class Storage:
-    def __init__(self, root: str, visited: Dict[str, str], downloaded: Dict[str, Set[str]], versions: Dict[str, int]):
+    def __init__(
+        self, root: str, visited: Dict[str, FileVersion], downloaded: Dict[str, Set[str]], versions: Dict[str, int]
+    ):
         self._root = root
         self._visited = visited
         self._downloaded = downloaded
@@ -63,7 +97,11 @@ class Storage:
         visited = {filename: extension for filename, extension in list_directory(os.path.join(root, "visited"))}
         downloaded = {str(width): explore_downloaded(str(width)) for width in widths}
 
-        versions = {key: sum(1 for _ in group) for key, group in itertools.groupby(sorted(visited.values()))}
+        versions = {
+            key: sum(1 for _ in group)
+            for key, group in itertools.groupby(sorted(map(lambda x: str(x), visited.values())))
+        }
+
         return Storage(root, visited, downloaded, versions)
 
     def is_visited(self, id: str) -> bool:
@@ -75,7 +113,7 @@ class Storage:
     def downloaded_count(self, width: int) -> int:
         return len(self._downloaded[str(width)])
 
-    def get_versions(self) -> Set[str]:
+    def get_versions(self) -> List[str]:
         return sorted([version for version in self._versions.keys()])
 
     def get_downloadable(
@@ -94,22 +132,45 @@ class Storage:
                     del self._visited[id]
                     os.remove(filepath)
 
-    def set_visited(self, id: str, url: str, kwargs: Dict[str, str]) -> None:
-        version = ".v3"
+    def set_visited(
+        self,
+        id: str,
+        url: str,
+        flags: str,
+        kwargs: Dict[str, Optional[str]],
+        merge: Callable[[Dict[str, Any], Dict[str, Any]], Tuple[Dict[str, Any], str]],
+    ) -> bool:
+        version = ".v5"
+        previous: Optional[Dict[str, Any]] = None
 
-        if id in self._visited and self._visited[id] == version:
+        if id in self._visited and self._visited[id].is_newer(FileVersion(version, flags)):
             return False
 
-        create_if_absent(os.path.join(self._root, "visited", id[0:4]))
-        with open(os.path.join(self._root, "visited", id[0:4], f"{id}{version}"), "w") as file:
-            json.dump({"url": url, **kwargs}, file, indent=4)
-
         if id in self._visited:
-            os.remove(os.path.join(self._root, "visited", id[0:4], f"{id}{self._visited[id]}"))
-            self._versions[self._visited[id]] -= 1
+            with open(os.path.join(self._root, "visited", id[0:4], f"{id}{self._visited[id]}"), "r") as file:
+                previous = json.load(file)
 
-        self._visited[id] = version
-        self._versions[version] += 1
+        data: Dict[str, Any] = {"url": url, **kwargs}
+        data, flags = merge(previous, data) if previous else (data, flags)
+        current = FileVersion(version, flags)
+
+        create_if_absent(os.path.join(self._root, "visited", id[0:4]))
+        with open(os.path.join(self._root, "visited", id[0:4], f"{id}{current}"), "w") as file:
+            json.dump(data, file, indent=4)
+
+        if previous and str(self._visited[id]) != str(current):
+            os.remove(os.path.join(self._root, "visited", id[0:4], f"{id}{self._visited[id]}"))
+            self._versions[str(self._visited[id])] -= 1
+
+        if previous:
+            if not self._versions[str(self._visited[id])]:
+                del self._versions[str(self._visited[id])]
+
+        if str(current) not in self._versions:
+            self._versions[str(current)] = 0
+
+        self._visited[id] = current
+        self._versions[str(current)] += 1
 
         return True
 

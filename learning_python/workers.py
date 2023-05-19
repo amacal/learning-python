@@ -1,3 +1,4 @@
+import time
 import queue
 import logging
 import requests
@@ -7,9 +8,14 @@ from typing import Tuple
 from typing import Optional
 
 from dataclasses import dataclass
+
 from learning_python.unsplash import extract_visible_images
+from learning_python.unsplash import ImageAttribution
 
 from selenium.webdriver import Chrome
+from urllib3.exceptions import ProtocolError
+from urllib3.exceptions import MaxRetryError
+
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.support.wait import WebDriverWait
 
@@ -52,7 +58,8 @@ class CrawlRequest:
 
 @dataclass(kw_only=True)
 class CrawlResponse:
-    data: List[Tuple[str, str, Optional[str], Optional[str]]]
+    url: str
+    data: List[ImageAttribution]
 
 
 def wait_for_network_idle(driver: Chrome, idle_threshod: float = 5, timeout: float = 30) -> bool:
@@ -89,6 +96,8 @@ def crawling(incoming: queue.Queue, outgoing: queue.Queue, profile: str):
 
     driver = Chrome(options=options)
     driver.set_window_size(1920, 1080)
+
+    iteration = 1
     logger = logging.getLogger("crawling")
 
     value: Optional[CrawlRequest]
@@ -99,6 +108,22 @@ def crawling(incoming: queue.Queue, outgoing: queue.Queue, profile: str):
 
             wait_for_network_idle(driver, idle_threshod=1)
             data = list(extract_visible_images(driver))
-            outgoing.put(CrawlResponse(data=data))
+
+            outgoing.put(CrawlResponse(url=value.follow, data=data))
+            iteration = 1
+        
+        except ProtocolError as ex:
+            logger.info(f"Completed Chrome session with profile: '{profile}'")
+            break
+
+        except MaxRetryError as ex:
+            logger.info(f"Completed Chrome session with profile: '{profile}'")
+            break
+
         except Exception as ex:
-            logger.error(str(ex))
+            logger.error(f"{type(ex)}: {str(ex)}")
+            iteration *= 2
+
+        if iteration > 1:
+            logger.warn(f"Waiting {iteration} seconds ...")
+            time.sleep(iteration)
