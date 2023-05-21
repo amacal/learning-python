@@ -196,7 +196,7 @@ class Storage:
 
     def pop_batch(self) -> Optional[Dict[str, str]]:
         def list(path):
-            with os.scandir(os.path.join(path, "queue")) as entries:
+            with os.scandir(path) as entries:
                 for entry in entries:
                     if entry.is_file():
                         with open(entry.path, "r") as file:
@@ -211,4 +211,4 @@ class Storage:
 
             return None
 
-        return list(self._root)
+        return list(os.path.join(self._root, "queue"))
