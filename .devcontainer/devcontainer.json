@@ -6,11 +6,11 @@
         "context": "..",
         "args": {
             "PYTHON_VERSION": "3.11",
-            "POETRY_VERSION": "1.4.2"
+            "POETRY_VERSION": "1.5.1"
         }
     },
     "mounts": [
-        "source=C:\\Users\\Adrian Macal\\Unsplash,target=/unsplash,type=bind,consistency=cached"
+        "source=C:\\Users\\Adrian Macal\\Wikipedia,target=/wikipedia,type=bind,consistency=cached"
     ],
     "customizations": {
         "vscode": {
