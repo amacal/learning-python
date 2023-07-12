@@ -5,18 +5,15 @@ description = "learning-python"
 authors = ["Adrian Macal <adma@amacal.pl>"]
 
 [tool.poetry.scripts]
-ingest = "learning_python.main:ingest"
-count = "learning_python.main:count"
-rows = "learning_python.main:rows"
-distinct = "learning_python.main:distinct"
-order_by = "learning_python.main:order_by"
+gpt = "learning_python.main:gpt"
 
 [tool.poetry.dependencies]
-python = ">=3.11.3,<3.12"
-click = "8.1.3"
+python = ">=3.11.4,<3.12"
+click = "^8.1.4"
+openai = "^0.27.8"
 
 [tool.poetry.group.dev.dependencies]
-mypy = "1.2.0"
+mypy = "^1.4.1"
 
 [build-system]
 requires = ["poetry"]

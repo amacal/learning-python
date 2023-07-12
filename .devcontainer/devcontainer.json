@@ -9,9 +9,6 @@
             "POETRY_VERSION": "1.5.1"
         }
     },
-    "mounts": [
-        "source=C:\\Users\\Adrian Macal\\Wikipedia,target=/wikipedia,type=bind,consistency=cached"
-    ],
     "customizations": {
         "vscode": {
             "extensions": [
