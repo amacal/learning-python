@@ -5,15 +5,20 @@ description = "learning-python"
 authors = ["Adrian Macal <adma@amacal.pl>"]
 
 [tool.poetry.scripts]
-gpt = "learning_python.main:gpt"
+chunk = "learning_python.main:chunk"
+diff = "learning_python.main:diff"
+reconstruct = "learning_python.main:reconstruct"
+simulate = "learning_python.main:simulate"
 
 [tool.poetry.dependencies]
 python = ">=3.11.4,<3.12"
 click = "^8.1.4"
-openai = "^0.27.8"
+requests = "^2.31.0"
 
 [tool.poetry.group.dev.dependencies]
 mypy = "^1.4.1"
+pytest = "^7.4.0"
+types-requests = "^2.31.0.1"
 
 [build-system]
 requires = ["poetry"]
